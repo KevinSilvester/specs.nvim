@@ -29,13 +29,13 @@ function M.should_show_specs(start_win_id)
     end
 
     local buftype, filetype, ok
-    ok, buftype = pcall(vim.api.nvim_buf_get_option, 0, 'buftype')
+    ok, buftype = pcall(vim.api.nvim_get_option_value, 'buftype', { buf = 0 })
 
     if ok and opts.ignore_buftypes[buftype] then
         return false
     end
 
-    ok, filetype = pcall(vim.api.nvim_buf_get_option, 0, 'filetype')
+    ok, filetype = pcall(vim.api.nvim_get_option_value, 'filetype', { buf = 0 })
 
     if ok and opts.ignore_filetypes[filetype] then
         return false
@@ -68,18 +68,18 @@ function M.show_specs(popup)
         row = cursor_row,
         style = 'minimal'
     })
-    vim.api.nvim_win_set_option(win_id, 'winhl', 'Normal:'.. _opts.popup.winhl)
-    vim.api.nvim_win_set_option(win_id, "winblend", _opts.popup.blend)
+    vim.api.nvim_set_option_value('winhl', 'Normal:'.. _opts.popup.winhl, { win = win_id })
+    vim.api.nvim_set_option_value('winblend', _opts.popup.blend, { win = win_id })
 
     local cnt = 0
     local config = vim.api.nvim_win_get_config(win_id)
-    local timer = vim.loop.new_timer()
+    local timer = vim.uv.new_timer()
     local closed = false
 
-    vim.loop.timer_start(timer, _opts.popup.delay_ms, _opts.popup.inc_ms, vim.schedule_wrap(function()
+    vim.uv.timer_start(timer, _opts.popup.delay_ms, _opts.popup.inc_ms, vim.schedule_wrap(function()
         if closed or vim.api.nvim_get_current_win() ~= start_win_id then
             if not closed then
-                pcall(vim.loop.close, timer)
+                pcall(vim.uv.close, timer)
                 pcall(vim.api.nvim_win_close, win_id, true)
 
                 -- Callbacks might stack up before the timer actually gets closed, track that state
@@ -95,15 +95,15 @@ function M.show_specs(popup)
             local dm = _opts.popup.resizer(_opts.popup.width, cursor_col, cnt)
 
             if bl ~= nil then
-                vim.api.nvim_win_set_option(win_id, "winblend", bl)
+                vim.api.nvim_set_option_value('winblend', bl, { win = win_id })
             end
             if dm ~= nil then
-                config["col"][false] = dm[2]
+                config.col = dm[2]
                 vim.api.nvim_win_set_config(win_id, config)
                 vim.api.nvim_win_set_width(win_id, dm[1])
             end
             if bl == nil and dm == nil then -- Done blending and resizing
-                vim.loop.close(timer)
+                vim.uv.close(timer)
                 vim.api.nvim_win_close(win_id, true)
             end
             cnt = cnt+1

@@ -1,8 +1,8 @@
 local M = {}
 local opts = {}
 
-local old_cur
-local au_toggle
+local old_cur = nil
+local au_group = nil
 
 function M.on_cursor_moved()
   local cur = vim.fn.winline() + vim.api.nvim_win_get_position(0)[1]
@@ -233,7 +233,7 @@ function M.setup(user_opts)
 end
 
 function M.toggle()
-  if au_toggle then
+  if au_group then
     M.clear_autocmds()
   else
     M.create_autocmds()
@@ -241,20 +241,24 @@ function M.toggle()
 end
 
 function M.create_autocmds()
-  vim.cmd 'augroup Specs'
-  vim.cmd 'autocmd!'
-  if opts.show_jumps then
-    vim.cmd "silent autocmd CursorMoved * :lua require('specs').on_cursor_moved()"
+  if not au_group then
+    au_group = vim.api.nvim_create_augroup('specs', {})
   end
-  vim.cmd 'augroup END'
-  au_toggle = true
+  if opts.show_jumps then
+    vim.api.nvim_create_autocmd('CursorMoved', {
+      group = au_group,
+      callback = function()
+        require('specs').on_cursor_moved()
+      end,
+    })
+  end
 end
 
 function M.clear_autocmds()
-  vim.cmd 'augroup Specs'
-  vim.cmd 'autocmd!'
-  vim.cmd 'augroup END'
-  au_toggle = false
+  if au_group then
+    vim.api.nvim_del_augroup_by_id(au_group)
+  end
+  au_group = false
 end
 
 return M

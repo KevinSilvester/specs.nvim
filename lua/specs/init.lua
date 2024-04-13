@@ -220,7 +220,7 @@ local DEFAULT_OPTS = {
     inc_ms = 5,
     blend = 10,
     width = 20,
-    winhl = 'PMenu',
+    winhl = 'Pmenu',
     fader = M.exp_fader,
     resizer = M.shrink_resizer,
   },

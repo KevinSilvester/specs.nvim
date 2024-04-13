@@ -1,3 +1,6 @@
+local api = vim.api
+local fn = vim.fn
+
 local M = {}
 local opts = {}
 
@@ -5,7 +8,7 @@ local old_cur = nil
 local au_group = nil
 
 function M.on_cursor_moved()
-  local cur = vim.fn.winline() + vim.api.nvim_win_get_position(0)[1]
+  local cur = fn.winline() + api.nvim_win_get_position(0)[1]
   if old_cur then
     local jump = math.abs(cur - old_cur)
     if jump >= opts.min_jump then
@@ -16,11 +19,11 @@ function M.on_cursor_moved()
 end
 
 function M.should_show_specs(start_win_id)
-  if not vim.api.nvim_win_is_valid(start_win_id) then
+  if not api.nvim_win_is_valid(start_win_id) then
     return false
   end
 
-  if vim.fn.getcmdpos() ~= 0 then
+  if fn.getcmdpos() ~= 0 then
     return false
   end
 
@@ -32,13 +35,13 @@ function M.should_show_specs(start_win_id)
   end
 
   local buftype, filetype, ok
-  ok, buftype = pcall(vim.api.nvim_get_option_value, 'buftype', { buf = 0 })
+  ok, buftype = pcall(api.nvim_get_option_value, 'buftype', { buf = 0 })
 
   if ok and opts.ignore_buftypes[buftype] then
     return false
   end
 
-  ok, filetype = pcall(vim.api.nvim_get_option_value, 'filetype', { buf = 0 })
+  ok, filetype = pcall(api.nvim_get_option_value, 'filetype', { buf = 0 })
 
   if ok and opts.ignore_filetypes[filetype] then
     return false
@@ -48,7 +51,7 @@ function M.should_show_specs(start_win_id)
 end
 
 function M.show_specs(popup)
-  local start_win_id = vim.api.nvim_get_current_win()
+  local start_win_id = api.nvim_get_current_win()
 
   if not M.should_show_specs(start_win_id) then
     return
@@ -60,10 +63,10 @@ function M.show_specs(popup)
 
   local _opts = vim.tbl_deep_extend('force', opts, { popup = popup })
 
-  local cursor_col = vim.fn.wincol() - 1
-  local cursor_row = vim.fn.winline() - 1
-  local bufh = vim.api.nvim_create_buf(false, true)
-  local win_id = vim.api.nvim_open_win(bufh, false, {
+  local cursor_col = fn.wincol() - 1
+  local cursor_row = fn.winline() - 1
+  local bufh = api.nvim_create_buf(false, true)
+  local win_id = api.nvim_open_win(bufh, false, {
     relative = 'win',
     width = 1,
     height = 1,
@@ -71,15 +74,15 @@ function M.show_specs(popup)
     row = cursor_row,
     style = 'minimal',
   })
-  vim.api.nvim_set_option_value(
+  api.nvim_set_option_value(
     'winhl',
     'Normal:' .. _opts.popup.winhl,
     { win = win_id }
   )
-  vim.api.nvim_set_option_value('winblend', _opts.popup.blend, { win = win_id })
+  api.nvim_set_option_value('winblend', _opts.popup.blend, { win = win_id })
 
   local cnt = 0
-  local config = vim.api.nvim_win_get_config(win_id)
+  local config = api.nvim_win_get_config(win_id)
   local timer = vim.uv.new_timer()
   local closed = false
 
@@ -88,10 +91,10 @@ function M.show_specs(popup)
     _opts.popup.delay_ms,
     _opts.popup.inc_ms,
     vim.schedule_wrap(function()
-      if closed or vim.api.nvim_get_current_win() ~= start_win_id then
+      if closed or api.nvim_get_current_win() ~= start_win_id then
         if not closed then
           pcall(vim.uv.close, timer)
-          pcall(vim.api.nvim_win_close, win_id, true)
+          pcall(api.nvim_win_close, win_id, true)
 
           -- Callbacks might stack up before the timer actually gets closed, track that state
           -- internally here instead
@@ -101,21 +104,21 @@ function M.show_specs(popup)
         return
       end
 
-      if vim.api.nvim_win_is_valid(win_id) then
+      if api.nvim_win_is_valid(win_id) then
         local bl = _opts.popup.fader(_opts.popup.blend, cnt)
         local dm = _opts.popup.resizer(_opts.popup.width, cursor_col, cnt)
 
         if bl ~= nil then
-          vim.api.nvim_set_option_value('winblend', bl, { win = win_id })
+          api.nvim_set_option_value('winblend', bl, { win = win_id })
         end
         if dm ~= nil then
           config.col = dm[2]
-          vim.api.nvim_win_set_config(win_id, config)
-          vim.api.nvim_win_set_width(win_id, dm[1])
+          api.nvim_win_set_config(win_id, config)
+          api.nvim_win_set_width(win_id, dm[1])
         end
         if bl == nil and dm == nil then -- Done blending and resizing
           vim.uv.close(timer)
-          vim.api.nvim_win_close(win_id, true)
+          api.nvim_win_close(win_id, true)
         end
         cnt = cnt + 1
       end
@@ -242,10 +245,10 @@ end
 
 function M.create_autocmds()
   if not au_group then
-    au_group = vim.api.nvim_create_augroup('specs', {})
+    au_group = api.nvim_create_augroup('specs', {})
   end
   if opts.show_jumps then
-    vim.api.nvim_create_autocmd('CursorMoved', {
+    api.nvim_create_autocmd('CursorMoved', {
       group = au_group,
       callback = function()
         require('specs').on_cursor_moved()
@@ -256,7 +259,7 @@ end
 
 function M.clear_autocmds()
   if au_group then
-    vim.api.nvim_del_augroup_by_id(au_group)
+    api.nvim_del_augroup_by_id(au_group)
   end
   au_group = false
 end
